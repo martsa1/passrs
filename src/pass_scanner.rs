@@ -4,10 +4,11 @@ use std::{
 };
 
 use crate::errors::Error;
+use log::debug;
 
 /** Recursively collect files from the provided base path.
 */
-fn collect_files(base_dir: &Path) -> Result<Vec<PathBuf>, Error> {
+pub fn collect_files(base_dir: &Path) -> Result<Vec<PathBuf>, Error> {
     if !base_dir.is_dir() {
         return Err(Error::InvalidPath {
             path: base_dir.to_path_buf(),
@@ -21,28 +22,48 @@ fn collect_files(base_dir: &Path) -> Result<Vec<PathBuf>, Error> {
         let cwd = targets.pop().ok_or(Error::InvalidPath {
             path: "unexpected_path".into(),
         })?;
+        debug!("Searching {}", cwd.to_string_lossy());
+
         for entry in std::fs::read_dir(cwd)? {
             let entry = entry?;
             let path = entry.path();
 
             if path.is_dir() {
+                //debug!(
+                //    "Found directory to recurse into: {}",
+                //    path.to_string_lossy()
+                //);
                 targets.push(path);
                 continue;
             }
             if path.is_file() {
+                //debug!("Found file: {}", path.to_string_lossy());
                 results.push(path)
             }
         }
     }
 
+    debug!("Found {} files", results.len());
     Ok(results)
 }
 
-fn collect_pass_files(base_dir: &Path) -> Result<Vec<PathBuf>, Error> {
+pub fn collect_pass_files(base_dir: &Path) -> Result<Vec<PathBuf>, Error> {
+    debug!(
+        "Searching '{}' for password entries",
+        base_dir.to_string_lossy()
+    );
+
     let pass_files: Vec<PathBuf> = collect_files(base_dir)?
         .into_iter()
-        .filter(|i| i.ends_with(".gpg"))
+        .filter(|i| {
+            match i.extension() {
+                Some(ext) => return ext.to_string_lossy() == "gpg",
+                None => return false,
+            }
+        })
         .collect();
+
+    debug!("Found {} entries with .gpg extension", pass_files.len());
 
     Ok(pass_files)
 }
@@ -80,6 +101,10 @@ mod tests {
                 }
             }
 
+            debug!(
+                "Created sample directory tree at: {}",
+                base_dir.to_string_lossy()
+            );
             Self {
                 base_path: base_dir,
                 expected_files: expected,
@@ -88,6 +113,7 @@ mod tests {
     }
     impl Drop for TmpTree {
         fn drop(&mut self) {
+            debug!("Cleaning up {}", self.base_path.to_string_lossy());
             if self.base_path.is_dir() {
                 std::fs::remove_dir_all(&self.base_path).unwrap();
             }

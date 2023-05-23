@@ -1,52 +1,16 @@
-use iced::widget::{button, column, text, Column};
-use iced::{Element, Sandbox, Settings};
-
-mod settings;
-mod pass_scanner;
 mod errors;
+mod pass_scanner;
+mod settings;
+mod ui;
 
-struct Counter {
-    value: i32,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum Message {
-    IncrementPressed,
-    DecrementPressed,
-}
-
-impl Sandbox for Counter {
-    type Message = Message;
-
-    fn new() -> Counter {
-        Self { value: 0 }
-    }
-
-    fn title(&self) -> String {
-        "Sample Counter".into()
-    }
-
-    fn view(&self) -> Element<Message> {
-        column![
-            button("+").on_press(Message::IncrementPressed),
-            text(self.value).size(50),
-            button("-").on_press(Message::DecrementPressed),
-        ]
-        .into()
-    }
-
-    fn update(&mut self, message: Message) {
-        match message {
-            Message::IncrementPressed => {
-                self.value += 1;
-            }
-            Message::DecrementPressed => {
-                self.value -= 1;
-            }
-        }
-    }
-}
+use env_logger::Builder;
+use iced::{Sandbox, Settings};
+use log::LevelFilter;
 
 fn main() -> iced::Result {
-    Counter::run(Settings::default())
+    let log_builder = Builder::from_default_env()
+        .filter(Some("passrs"), LevelFilter::Debug)
+        .init();
+
+    ui::PassRS::run(Settings::default())
 }
