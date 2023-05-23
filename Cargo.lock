@@ -2247,6 +2247,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "passrs"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "env_logger",
+ "home",
+ "iced",
+ "log",
+ "pgp",
+ "uuid",
+]
+
+[[package]]
 name = "pem-rfc7468"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3651,19 +3664,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61de7bac303dc551fe038e2b3cef0f571087a47571ea6e79a87692ac99b99699"
 dependencies = [
  "memchr",
-]
-
-[[package]]
-name = "winpassrs"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "env_logger",
- "home",
- "iced",
- "log",
- "pgp",
- "uuid",
 ]
 
 [[package]]
