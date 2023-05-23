@@ -1,6 +1,10 @@
 use iced::widget::{button, column, text, Column};
 use iced::{Element, Sandbox, Settings};
 
+mod settings;
+mod pass_scanner;
+mod errors;
+
 struct Counter {
     value: i32,
 }
