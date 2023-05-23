@@ -1,6 +1,6 @@
 use std::path::{PathBuf, Path};
 
-use iced::widget::{column, text, text_input};
+use iced::widget::{column, text, text_input, scrollable};
 use iced::{Element, Length, Sandbox};
 
 use super::pass_scanner;
@@ -78,9 +78,10 @@ impl Sandbox for PassRS {
         }
 
         let pass_text = text(entry_text);
+        let scroll_box = scrollable(pass_text).width(Length::Fill);
         let search_box = text_input("Search...", &self.search).on_input(Action::SearchInput).padding(2);
 
-        column![search_box, pass_text]
+        column![search_box, scroll_box]
             .spacing(2)
             .width(Length::Fill)
             .into()
