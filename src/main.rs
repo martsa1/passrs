@@ -2,6 +2,7 @@ mod errors;
 mod pass_scanner;
 mod settings;
 mod ui;
+mod pgp;
 
 use env_logger::Builder;
 use iced::{Sandbox, Settings};
