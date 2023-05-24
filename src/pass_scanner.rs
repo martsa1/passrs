@@ -69,38 +69,33 @@ pub fn collect_pass_files(base_dir: &Path) -> Result<Vec<PathBuf>, Error> {
 /** Fuzzy filter the provided vec of pass entries with the filter key.
  * Returns Some vector of matching strings, or None if there are no matches left.
 */
-pub fn filter_pass_entries(
-    pass_entries: &Vec<String>,
-    filter: Option<&str>,
-) -> Option<Vec<String>> {
+pub fn filter_pass_entries(pass_entries: &Vec<String>, filter: &str) -> Option<Vec<String>> {
     use fuzzy_matcher::skim::SkimMatcherV2;
     use fuzzy_matcher::FuzzyMatcher;
 
-    match filter {
-        Some(filter) => {
-            let matcher = SkimMatcherV2::default().ignore_case();
-            let mut matched_entries: Vec<String> = pass_entries
-                .iter()
-                .filter_map(|x| match matcher.fuzzy_match(x, &filter) {
-                    Some(val) => {
-                        return Some(format!("{}: {}", val, x));
-                    }
-                    None => {
-                        return None;
-                    }
-                })
-                .collect();
-            matched_entries.sort();
-            matched_entries.reverse();
-            // TODO: is poentially more elegant to use `.unstable_sort_by(|a, b| b.cmp(a))` per
-            // rust docs: https://doc.rust-lang.org/std/primitive.slice.html#method.sort_unstable_by
-            return Some(matched_entries);
-        }
-        None => {
-            let res = pass_entries.to_vec();
-            return Some(res);
-        }
+    debug!("Filter string: {:?}", filter);
+    if filter == "" {
+        let res = pass_entries.to_vec();
+        return Some(res);
     }
+
+    let matcher = SkimMatcherV2::default().ignore_case();
+    let mut matched_entries: Vec<String> = pass_entries
+        .iter()
+        .filter_map(|x| match matcher.fuzzy_match(x, &filter) {
+            Some(val) => {
+                return Some(format!("{}: {}", val, x));
+            }
+            None => {
+                return None;
+            }
+        })
+        .collect();
+    matched_entries.sort();
+    matched_entries.reverse();
+    // TODO: is poentially more elegant to use `.unstable_sort_by(|a, b| b.cmp(a))` per
+    // rust docs: https://doc.rust-lang.org/std/primitive.slice.html#method.sort_unstable_by
+    return Some(matched_entries);
 }
 
 #[cfg(test)]
@@ -164,7 +159,7 @@ mod tests {
         ];
 
         // An empty filter should return all results
-        let res = filter_pass_entries(&sample_entries, None);
+        let res = filter_pass_entries(&sample_entries, "");
         match res {
             Some(res) => {
                 assert_eq!(sample_entries, res);
@@ -175,7 +170,7 @@ mod tests {
         }
 
         // A non-empty filter should return fuzzy matches.
-        let res = filter_pass_entries(&sample_entries, Some("wp"));
+        let res = filter_pass_entries(&sample_entries, "wp");
         assert!(res.is_some());
 
         let res = res.unwrap();

@@ -1,6 +1,6 @@
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 
-use iced::widget::{column, text, text_input, scrollable};
+use iced::widget::{column, container, row, scrollable, text, text_input, Text, TextInput};
 use iced::{Element, Length, Sandbox};
 
 use super::pass_scanner;
@@ -67,19 +67,16 @@ impl Sandbox for PassRS {
     }
 
     fn view(&self) -> Element<Action> {
-        let entry_names = render_pass_entries(&self.entries, &self.store_path);
+        let mut entries: Vec<String> = self.entries.iter().filter_map(|i| entry_to_ui_format(&i, &self.store_path)).collect();
+        entries = pass_scanner::filter_pass_entries(&entries, &self.search).unwrap_or(vec![]);
 
-        let mut entry_text = String::new();
-        match entry_names {
-            Some(entries) => {
-                entry_text = entries.join("\n");
-            }
-            None => {}
-        }
+        let entry_names = render_pass_entries(&entries, &self.store_path);
 
-        let pass_text = text(entry_text);
-        let scroll_box = scrollable(pass_text).width(Length::Fill);
-        let search_box = text_input("Search...", &self.search).on_input(Action::SearchInput).padding(2);
+        let scroll_box = scrollable(column(entry_names.into_iter().map(|i| i.into()).collect()))
+            .width(Length::Fill);
+        let search_box = text_input("Search...", &self.search)
+            .on_input(Action::SearchInput)
+            .padding(2);
 
         column![search_box, scroll_box]
             .spacing(2)
@@ -88,18 +85,23 @@ impl Sandbox for PassRS {
     }
 }
 
-fn render_pass_entries(entries: &Vec<PathBuf>, base_path: &Path) -> Option<Vec<String>> {
-    entries
+fn entry_to_ui_format(entry: &PathBuf, base_path: &Path) -> Option<String> {
+    let rel_path = entry.strip_prefix(&base_path);
+
+    match rel_path {
+        Ok(p) => {
+            let entry_name = p.to_string_lossy().replace(".gpg", "");
+            Some(entry_name)
+        }
+        Err(_) => None,
+    }
+}
+
+fn render_pass_entries<'a>(entries: &Vec<String>, base_path: &Path) -> Vec<Text<'a>> {
+    let matches = entries
         .iter()
-        .map(|i| {
-            let rel_path = i.strip_prefix(&base_path);
-            match rel_path {
-                Ok(p) => {
-                    let entry_name = p.to_string_lossy().to_string().replace(".gpg", "");
-                    Some(entry_name)
-                }
-                Err(_) => None,
-            }
-        })
-        .collect()
+        .map(|i| text(i.to_owned()))
+        .collect();
+
+    matches
 }
