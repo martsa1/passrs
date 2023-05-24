@@ -15,3 +15,6 @@ fn main() -> iced::Result {
 
     ui::PassRS::run(Settings::default())
 }
+
+#[cfg(test)]
+mod test_util;
