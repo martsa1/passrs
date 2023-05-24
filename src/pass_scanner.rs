@@ -55,11 +55,9 @@ pub fn collect_pass_files(base_dir: &Path) -> Result<Vec<PathBuf>, Error> {
 
     let pass_files: Vec<PathBuf> = collect_files(base_dir)?
         .into_iter()
-        .filter(|i| {
-            match i.extension() {
-                Some(ext) => return ext.to_string_lossy() == "gpg",
-                None => return false,
-            }
+        .filter(|i| match i.extension() {
+            Some(ext) => return ext.to_string_lossy() == "gpg",
+            None => return false,
         })
         .collect();
 
@@ -132,8 +130,8 @@ mod tests {
                 let collected = collected.to_owned().sort();
                 assert_eq!(collected, expected);
             }
-            Err(_) => {
-                assert!(false);
+            Err(err) => {
+                assert!(false, "file collection failed: {:?}", err);
             }
         }
     }
@@ -146,11 +144,17 @@ mod tests {
         match pass_entries {
             Ok(entries) => {
                 for entry in entries {
-                    assert!(entry.ends_with(".gpg"));
+                    let entry_str = entry.to_string_lossy();
+                    assert!(
+                        entry_str.ends_with(".gpg"),
+                        "entry was meant to end with .gpg: {:?} ({})",
+                        entry_str,
+                        entry_str.ends_with(".gpg")
+                    );
                 }
             }
-            Err(_err) => {
-                assert!(false);
+            Err(err) => {
+                assert!(false, "pass file collection failed: {:?}", err);
             }
         }
 
