@@ -16,6 +16,12 @@ pgp = "*"
 home = "0.5.5"
 base64 = "0.21.1"
 
+[dependencies.fuzzy-matcher]
+version = "0.3.7"
+features = [
+    "compact",
+]
+
 [dependencies.uuid]
 version = "1.3.3"
 features = [

@@ -66,16 +66,51 @@ pub fn collect_pass_files(base_dir: &Path) -> Result<Vec<PathBuf>, Error> {
     Ok(pass_files)
 }
 
+/** Fuzzy filter the provided vec of pass entries with the filter key.
+ * Returns Some vector of matching strings, or None if there are no matches left.
+*/
+pub fn filter_pass_entries(
+    pass_entries: &Vec<String>,
+    filter: Option<&str>,
+) -> Option<Vec<String>> {
+    use fuzzy_matcher::skim::SkimMatcherV2;
+    use fuzzy_matcher::FuzzyMatcher;
+
+    match filter {
+        Some(filter) => {
+            let matcher = SkimMatcherV2::default().ignore_case();
+            let mut matched_entries: Vec<String> = pass_entries
+                .iter()
+                .filter_map(|x| match matcher.fuzzy_match(x, &filter) {
+                    Some(val) => {
+                        return Some(format!("{}: {}", val, x));
+                    }
+                    None => {
+                        return None;
+                    }
+                })
+                .collect();
+            matched_entries.sort();
+            matched_entries.reverse();
+            // TODO: is poentially more elegant to use `.unstable_sort_by(|a, b| b.cmp(a))` per
+            // rust docs: https://doc.rust-lang.org/std/primitive.slice.html#method.sort_unstable_by
+            return Some(matched_entries);
+        }
+        None => {
+            let res = pass_entries.to_vec();
+            return Some(res);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use std::env;
-    use std::path::PathBuf;
-
     use super::*;
     use crate::test_util::TmpTree;
+    use anyhow::Result;
 
     #[test]
-    fn test_collecting_files() {
+    fn test_collecting_files() -> Result<()> {
         let tmp_tree = TmpTree::new();
 
         let collected_files = collect_files(&tmp_tree.base_path);
@@ -90,10 +125,12 @@ mod tests {
                 assert!(false, "file collection failed: {:?}", err);
             }
         }
+
+        Ok(())
     }
 
     #[test]
-    fn test_filter_to_pass_entries() -> Result<(), String> {
+    fn test_filter_to_pass_entries() -> Result<()> {
         let tmp_tree = TmpTree::new();
 
         let pass_entries = collect_pass_files(&tmp_tree.base_path);
@@ -113,6 +150,38 @@ mod tests {
                 assert!(false, "pass file collection failed: {:?}", err);
             }
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_filter_pass_entries() -> Result<()> {
+        let sample_entries: Vec<String> = vec![
+            "p/foo".into(),
+            "p/bar".into(),
+            "w/welp".into(),
+            "w/winning".into(),
+        ];
+
+        // An empty filter should return all results
+        let res = filter_pass_entries(&sample_entries, None);
+        match res {
+            Some(res) => {
+                assert_eq!(sample_entries, res);
+            }
+            None => {
+                assert!(false, "No results from filter");
+            }
+        }
+
+        // A non-empty filter should return fuzzy matches.
+        let res = filter_pass_entries(&sample_entries, Some("wp"));
+        assert!(res.is_some());
+
+        let res = res.unwrap();
+        assert_eq!(res.len(), 1);
+
+        assert!(res[0].ends_with("w/welp"));
 
         Ok(())
     }
