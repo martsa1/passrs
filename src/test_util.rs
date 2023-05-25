@@ -1,6 +1,13 @@
-use log::debug;
+use log::{debug, LevelFilter};
 use std::{env, path::PathBuf};
 use uuid::Uuid;
+
+pub fn init_logs() {
+    let _ = env_logger::Builder::from_default_env()
+        .filter(Some("passrs"), LevelFilter::Debug)
+        .is_test(true)
+        .try_init();
+}
 
 pub struct TmpTree {
     pub base_path: PathBuf,
