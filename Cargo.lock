@@ -2263,6 +2263,7 @@ dependencies = [
  "base64",
  "env_logger",
  "fuzzy-matcher",
+ "hex",
  "home",
  "iced",
  "log",
