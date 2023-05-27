@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use iced::widget::{column, container, row, scrollable, text, text_input, Text, TextInput};
-use iced::{Element, Length, Sandbox};
+use iced::widget::{column, container, scrollable, text, text_input, Text};
+use iced::{executor, subscription, Application, Command, Element, Length, Subscription, Theme, Event};
 
 use super::pass_scanner;
 use log::{info, warn};
@@ -10,39 +10,53 @@ pub struct PassRS {
     entries: Vec<PathBuf>,
     store_path: PathBuf,
     search: String,
+    selected: Option<usize>,
 }
 
 #[derive(Debug, Clone)]
 pub enum Action {
-    RefreshList,
-    ClearList,
     SearchInput(String),
+    SelectDown,
+    SelectUp,
+    SelectEntry,
+    EventOccurred(Event),
 }
 
-impl Sandbox for PassRS {
+impl Application for PassRS {
+    type Executor = executor::Default;
     type Message = Action;
+    type Theme = Theme;
+    type Flags = ();
 
-    fn new() -> PassRS {
+    fn new(_flags: Self::Flags) -> (PassRS, Command<Action>) {
         let store_path = PathBuf::from("/home/sam/.password-store");
         let pass_entries = pass_scanner::collect_pass_files(&store_path);
 
         match pass_entries {
             Ok(entries) => {
                 info!("Found {} password entries.", entries.len());
-                Self {
-                    entries,
-                    store_path,
-                    search: "".to_string(),
-                }
+                (
+                    Self {
+                        entries,
+                        store_path,
+                        search: "".to_string(),
+                        selected: None,
+                    },
+                    Command::none(),
+                )
             }
             Err(err) => {
                 warn!("Failed to retrieve store path entries: '{}'", err);
 
-                Self {
-                    entries: vec![],
-                    store_path,
-                    search: "".to_string(),
-                }
+                (
+                    Self {
+                        entries: vec![],
+                        store_path,
+                        search: "".to_string(),
+                        selected: None,
+                    },
+                    Command::none(),
+                )
             }
         }
     }
@@ -51,26 +65,72 @@ impl Sandbox for PassRS {
         "PassRS".into()
     }
 
-    fn update(&mut self, message: Action) {
+    fn update(&mut self, message: Action) -> Command<Action> {
         match message {
-            Action::RefreshList => {
-                self.entries = pass_scanner::collect_pass_files(&self.store_path).unwrap();
-            }
-            Action::ClearList => {
-                self.entries.clear();
-            }
             Action::SearchInput(input) => {
                 info!("SearchInput triggered: '{}'.", input);
                 self.search = input;
             }
+            Action::SelectUp => match self.selected {
+                Some(idx) => {
+                    self.selected = if idx > 0 {
+                        Some(idx - 1)
+                    } else {
+                        Some(self.entries.len())
+                    }
+                }
+                None => {}
+            },
+            Action::SelectDown => {
+                match self.selected {
+                    Some(idx) => {
+                        self.selected = if idx + 1 == self.entries.len() {
+                            // Roll from bottom to top of list
+                            Some(0)
+                        } else {
+                            Some(idx + 1)
+                        };
+                    }
+                    None => {
+                        self.selected = Some(0);
+                    }
+                }
+            }
+            Action::SelectEntry => todo!(),
+            Action::EventOccurred(event) => {
+
+            },
         }
+        Command::none()
     }
 
     fn view(&self) -> Element<Action> {
-        let mut entries: Vec<String> = self.entries.iter().filter_map(|i| entry_to_ui_format(&i, &self.store_path)).collect();
+        let mut entries: Vec<String> = self
+            .entries
+            .iter()
+            .filter_map(|i| entry_to_ui_format(&i, &self.store_path))
+            .collect();
         entries = pass_scanner::filter_pass_entries(&entries, &self.search).unwrap_or(vec![]);
 
+        let mut dark_row = iced::widget::container::Appearance::default();
+        dark_row.background = Some(iced::color!(10, 10, 10).into());
+
         let entry_names = render_pass_entries(&entries, &self.store_path);
+        let entry_names: Vec<iced::widget::Container<Action, iced::Renderer>> = entry_names
+            .into_iter()
+            .enumerate()
+            .map(|(idx, entry)| {
+                if let Some(selection_index) = self.selected {
+                    if selection_index == idx {
+                        // Make a... dark-themed container..?
+                        let container = container(entry);
+                        return container.style(iced::theme::Container::Box);
+                    }
+                }
+                // Make a normally-themed container.
+                return container(entry);
+            })
+            .collect();
 
         let scroll_box = scrollable(column(entry_names.into_iter().map(|i| i.into()).collect()))
             .width(Length::Fill);
@@ -82,6 +142,12 @@ impl Sandbox for PassRS {
             .spacing(2)
             .width(Length::Fill)
             .into()
+    }
+
+    fn subscription(&self) -> Subscription<Action> {
+        // TODO: Filter to keyboard enter etc...
+        subscription::events_with
+        subscription::events().map(Action::EventOccurred)
     }
 }
 
@@ -98,10 +164,7 @@ fn entry_to_ui_format(entry: &PathBuf, base_path: &Path) -> Option<String> {
 }
 
 fn render_pass_entries<'a>(entries: &Vec<String>, base_path: &Path) -> Vec<Text<'a>> {
-    let matches = entries
-        .iter()
-        .map(|i| text(i.to_owned()))
-        .collect();
+    let matches = entries.iter().map(|i| text(i.to_owned())).collect();
 
     matches
 }

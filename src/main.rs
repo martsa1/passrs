@@ -9,11 +9,15 @@ use iced::{Sandbox, Settings};
 use log::LevelFilter;
 
 fn main() -> iced::Result {
-    let log_builder = Builder::from_default_env()
+    let _log_builder = Builder::from_default_env()
         .filter(Some("passrs"), LevelFilter::Debug)
         .init();
 
-    ui::PassRS::run(Settings::default())
+    let mut settings = Settings::default();
+    settings.id = Some("PassRS".to_string());
+    settings.window.always_on_top = true;
+
+    ui::PassRS::run(settings)
 }
 
 #[cfg(test)]
