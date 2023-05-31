@@ -5,7 +5,7 @@ mod ui;
 mod pgp;
 
 use env_logger::Builder;
-use iced::{Sandbox, Settings};
+use iced::{Application, Settings};
 use log::LevelFilter;
 
 fn main() -> iced::Result {
