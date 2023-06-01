@@ -1,12 +1,13 @@
 use std::path::{Path, PathBuf};
 
+use anyhow::Result;
 use iced::widget::{column, container, scrollable, text, text_input, Text};
 use iced::{
     executor, subscription, Application, Command, Element, Event, Length, Subscription, Theme,
 };
 
 use super::pass_scanner;
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 
 pub struct PassRS {
     entries: Vec<PathBuf>,
@@ -140,7 +141,11 @@ impl Application for PassRS {
                     }
                 };
 
-                info!("Selecting entry {}!", entry.to_string_lossy());
+                let decrypted_message = decrypt_pass_entry(&entry);
+                match decrypted_message {
+                    Ok(data) => info!("Decrypted data:\n{}", data),
+                    Err(err) => error!("Decrypting failed: {}", err),
+                }
             }
             Action::EventOccurred(_event) => {}
         }
@@ -245,7 +250,6 @@ fn entry_from_ui_format(entry_name: &str, base_path: &Path) -> Option<PathBuf> {
     rel_path.push(entry);
     rel_path.set_extension("gpg");
 
-
     if rel_path.exists() && rel_path.is_file() {
         return Some(rel_path);
     }
@@ -256,4 +260,17 @@ fn render_pass_entries<'a>(entries: &Vec<String>, base_path: &Path) -> Vec<Text<
     let matches = entries.iter().map(|i| text(i.to_owned())).collect();
 
     matches
+}
+
+fn decrypt_pass_entry(entry_path: &Path) -> Result<String> {
+    use super::pgp::decrypt;
+    // TODO - load signing key at-start, based off settings for a key directory...
+    let key_path = PathBuf::from("/home/sam/code/personal/passrs/src/pgp/sample_key.asc");
+    let signing_key = decrypt::load_signing_key(&key_path)?;
+    let key_pass_pair = decrypt::KeyAndPassphrasePair::new("sample", &signing_key);
+
+    let message = decrypt::deserialise_message(entry_path)?;
+    let decrypted_message = decrypt::decrypt_message(message, &[key_pass_pair])?;
+
+    Ok(decrypted_message)
 }
