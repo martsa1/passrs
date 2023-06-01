@@ -34,7 +34,8 @@ impl Application for PassRS {
     type Flags = ();
 
     fn new(_flags: Self::Flags) -> (PassRS, Command<Action>) {
-        let store_path = PathBuf::from("/home/sam/.password-store");
+        let mut store_path = home::home_dir().unwrap();
+        store_path.push(".password-store");
         let pass_entries = pass_scanner::collect_pass_files(&store_path);
 
         match pass_entries {
